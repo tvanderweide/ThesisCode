@@ -10,7 +10,7 @@ import copy
 import matplotlib.pyplot as plt
 import cv2
 import scipy.optimize as opt
-
+import os
 
 #####-----------------------------------------------------------------------------------------------------------------------------------------------######
 # Read in RAW files and save as TIF
@@ -39,9 +39,9 @@ def read_RAW(fn):
     # Read the bits -- 'u2' is a uint16 number; and reshape to image
     img = np.frombuffer( udata, np.dtype('u2'), (4000*3000) ).reshape((3000, 4000))
     
-    # Plot the RAW data (3000,4000); note this has not yet been debayered
-    plt.matshow(img, cmap=plt.cm.jet)
-    plt.show()
+#    # Plot the RAW data (3000,4000); note this has not yet been debayered
+#    plt.matshow(img, cmap=plt.cm.jet)
+#    plt.show()
     
     # ### Debayer the image
     # Potentially useful website http://answers.opencv.org/question/171179/raw-image-cvtcolor-debayer/
@@ -52,10 +52,12 @@ def read_RAW(fn):
     color = cv2.cvtColor(img, cv2.COLOR_BAYER_RG2RGB).astype("uint16")
     color.shape     # __Note that the shape is now 3000 x 4000 x 3!__
     
-    # Plot the channels of the debayered image
-    plt.matshow(color[:,:,0], cmap=plt.cm.jet); plt.show()
-    plt.matshow(color[:,:,1], cmap=plt.cm.jet); plt.show()
-    plt.matshow(color[:,:,2], cmap=plt.cm.jet); plt.show()
+#    # Plot the channels of the debayered image
+#    plt.matshow(color[:,:,0], cmap=plt.cm.jet); plt.show()
+#    plt.matshow(color[:,:,1], cmap=plt.cm.jet); plt.show()
+#    plt.matshow(color[:,:,2], cmap=plt.cm.jet); plt.show()
+
+    return color
 
 
 #####--------------------------------------------------------------------------------------------------------------------------------------------------############
@@ -63,10 +65,8 @@ def read_RAW(fn):
 # Followed an example of Guassian fitting from here:
 # https://stackoverflow.com/questions/21566379/fitting-a-2d-gaussian-function-using-scipy-optimize-curve-fit-valueerror-and-m
 def LUT_function( xdata, rx, ry, x0, y0, c ):
-
     x = xdata[0]
     y = xdata[1]
-
     F = np.cosh( rx*(x-x0) ) * np.cosh( ry*(y-y0) ) + c
 
     return F
@@ -74,7 +74,7 @@ def LUT_function( xdata, rx, ry, x0, y0, c ):
 
 #####--------------------------------------------------------------------------------------------------------------------------------------------------############
 # Create the LUT filter to correct vignette falloff
-def lut_corr():
+def lut_corr(img, outfile):
     # Create x and y indices
     nrows = img.shape[0]
     ncols = img.shape[1]
@@ -87,48 +87,86 @@ def lut_corr():
     
     xdata = np.vstack( (x.ravel(), y.ravel()) ) # make (m*n, 2)
     
-    # Use real data
-    data = color[:,:,0]
-    data_noisy = np. true_divide( data.max(), data ) # Make the LUT filter
-    ydata = data_noisy.ravel() # make (m*n, 1)
+    modeled_filter_arr = np.zeros((3000,4000,3), np.float)
+    # Loop over the data channels individually
+    for x in range(0, 3):
+        # Use real data
+        data = img[:,:,x]
+        data_noisy = np. true_divide( data.max(), data ) # Make the LUT filter
+        ydata = data_noisy.ravel() # make (m*n, 1)
+        
+    #    fig, ax = plt.subplots(1, 1)
+    #    ax.imshow(ydata.reshape(nrows, ncols), cmap=plt.cm.jet, origin='bottom',
+    #              extent=(x.min(), x.max(), y.min(), y.max()))
+    #    plt.show()
+        
+        popt, pcov = opt.curve_fit( LUT_function, xdata, ydata, p0=initial_guess )
+    #    print(popt)
+        
+        # Compute the LUT function from the estimated parameters
+        modeled_filter = LUT_function( xdata, *popt)
+        modeled_filter = modeled_filter.reshape(nrows, ncols)
+        modeled_filter_arr[:,:,x] = modeled_filter
     
-    fig, ax = plt.subplots(1, 1)
-    ax.imshow(ydata.reshape(nrows, ncols), cmap=plt.cm.jet, origin='bottom',
-              extent=(x.min(), x.max(), y.min(), y.max()))
-    plt.show()
+    np.save(outfile, modeled_filter_arr)
     
-    popt, pcov = opt.curve_fit( LUT_function, xdata, ydata, p0=initial_guess )
+#    # Remap to pixels from the x,y in the fitting
+#    col = np.linspace(1, ncols, ncols)
+#    row = np.linspace(1, nrows, nrows)
+#    x, y = np.meshgrid(col, row)
+    # Plot the corrections
+#    fig, 
+#    ax = plt.subplot(121)
+#    ax.imshow(data_noisy, cmap=plt.cm.jet, origin='bottom',
+#              extent=(x.min(), x.max(), y.min(), y.max()))
+#    # Use modeled matrix to compute contours and plot on top of data
+#    ax.contour(x, y, modeled_filter, 8, colors='w')
+#    plt.show()
+#    
+#    # fig, 
+#    ax = plt.subplot(122)
+#    ax.imshow(modeled_filter, cmap=plt.cm.jet, origin='bottom',
+#              extent=(x.min(), x.max(), y.min(), y.max()))
+#    # Use modeled matrix to compute contours and plot on top of data
+#    ax.contour(x, y, modeled_filter, 8, colors='w')
+#    plt.show()
     
-    print(popt)
+    return
+
+
+#####-------------------------------------------------------------------------------------------------------------------------------------------------------------#####
+# Average all the RAW images
+def avg_Raw(fold):
+    # Create a list of all the RAW images
+    allfiles = os.listdir(fold)
+    imlist = [filename for filename in allfiles if  filename[-4:] in [".raw",".RAW"]]
+    N = np.float(len(imlist))
+
+    image = read_RAW(fold + "/" + imlist[0])
+    h = image.shape[0]
+    w = image.shape[1]
+    avg_arr = np.zeros((h,w,3), np.float)
+
+    # Calculate the average for all images
+    for img in imlist:
+        im_path = fold + "/" + img
+        imarr = read_RAW(im_path)
+        avg_arr = avg_arr + imarr/N
     
-    # Compute the LUT function from the estimated parameters
-    modeled_filter = LUT_function( xdata, *popt)
-    modeled_filter = modeled_filter.reshape(nrows, ncols)
-    
-    # Remap to pixels from the x,y in the fitting
-    col = np.linspace(1, ncols, ncols)
-    row = np.linspace(1, nrows, nrows)
-    x, y = np.meshgrid(col, row)
-    
-    fig, 
-    ax = plt.subplot(121)
-    ax.imshow(data_noisy, cmap=plt.cm.jet, origin='bottom',
-              extent=(x.min(), x.max(), y.min(), y.max()))
-    # Use modeled matrix to compute contours and plot on top of data
-    ax.contour(x, y, modeled_filter, 8, colors='w')
-    plt.show()
-    
-    # fig, 
-    ax = plt.subplot(122)
-    ax.imshow(modeled_filter, cmap=plt.cm.jet, origin='bottom',
-              extent=(x.min(), x.max(), y.min(), y.max()))
-    # Use modeled matrix to compute contours and plot on top of data
-    ax.contour(x, y, modeled_filter, 8, colors='w')
-    plt.show()
+    return avg_arr
 
 
 #######--------------------------------------------------------------------------------------------------------------------------------------------------------########
 # Main Definition
+print("Starting to create the LUT correction")
+main_fold = "N:/Data02/projects-active/IGEM_Kairosys/2018 Data/Vignette/Version4/"
 
+
+Camera_names = ['Photo_1', 'Photo_2', 'Photo_3', 'Photo_4', 'Photo_5', 'Photo_6']
+for cam in Camera_names:
+    fold_name = main_fold + cam
+    img_avg = avg_Raw(fold_name)
+    outfile = fold_name + "/lut_correction"
+    lut_corr(img_avg, outfile)
 
 
