@@ -13,7 +13,7 @@ import scipy.optimize as opt
 import os
 
 #####-----------------------------------------------------------------------------------------------------------------------------------------------######
-# Read in RAW files and save as TIF
+# Read in RAW files
 def read_RAW(fn, cam):
     # Choose the filename you want to load
 #    filename = './Version4/Photo_2/2018_0925_234508_021.RAW'
@@ -154,7 +154,7 @@ def avg_Raw(fold, cam):
     imlist = [filename for filename in allfiles if  filename[-4:] in [".raw",".RAW"]]
     N = np.float(len(imlist))
 
-    image = read_RAW(fold + "/" + imlist[0])
+    image = read_RAW(fold + "/" + imlist[0], cam)
     h = image.shape[0]
     w = image.shape[1]
     avg_arr = np.zeros((h,w,3), np.float)
