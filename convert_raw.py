@@ -136,11 +136,11 @@ def applyVignette(fn1, vigArr):
 
 
 #######--------------------------------------------------------------------------------------------------------------------------------------------------------########
-def saveTIF(fieldFolder, vigFolder, cam):
+def saveTIF(fieldFolder, vigFolder, vigCorrName):
     fieldFolder = fieldFolder + "/"
     print("Converting RAW to TIFF in: " + fieldFolder)
     # Create folder to save TIFFs if it DNE
-    fn1 = fieldFolder + "/Processed_2/"
+    fn1 = fieldFolder + "/Processed_3/"
     if not os.path.exists(fn1):
         os.mkdir(fn1)
     
@@ -149,25 +149,22 @@ def saveTIF(fieldFolder, vigFolder, cam):
     for jpgfn in sorted(glob.iglob(inJPG)):
         JPG.append(jpgfn)
     
-    print(JPG)
     # Save RAW images as TIFF files
     inFold = fieldFolder + "/*.RAW"
     for img in sorted(glob.iglob(inFold)):
-        imarr = read_RAW(img, cam)
+        imarr = read_RAW(img, vigCorrName)
             
         # Save the 16-bit images
         imgName = img.rpartition("\\")[2].rpartition(".")[0]
         outphoto = fn1 + imgName + ".tif"
         io.imsave(outphoto, imarr)
-        print("Saved: " + imgName)
+        print("Saved: " + img)
         
         # Transfer the Metadata
         for jpgimg in JPG:
             jpgName = jpgimg.rpartition("\\")[2].rpartition("_")[0]
             rawName = imgName.rpartition("_")[0]
             if jpgName == rawName:
-                print("JPG: " + jpgimg)
-                print("TIF: " + img)
                 copyExif(jpgimg, outphoto)
                 break  
     
@@ -189,7 +186,7 @@ for fieldNum in range(0,4):
     fieldFolder = fieldFold + fieldName
     vigFolder = vigFold + vigName
     
-    fn1 = saveTIF(fieldFolder, vigFolder, fieldName)
+    fn1 = saveTIF(fieldFolder, vigFolder, vigName)
 
     VigArr = loadVignette(vigFolder)
     applyVignette(fn1, VigArr)
