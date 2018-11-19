@@ -57,7 +57,7 @@ def iter_folder(fn):
 #        print("photoscan.exe <" + pyfile + "> " + calibratedFold)
         
         #Test passing the argument to the python file
-        subprocess.call("python " + pyfile + " " + calibratedFold)
+        subprocess.call("C:\Users\thomasvanderweide\AppData\Local\Continuum\anaconda3\python.exe " + pyfile + " " + calibratedFold)
     
 #    crop_ortho(sf, ortho)
 #    crop_ortho(sf, ortho_NDVI)

@@ -10,7 +10,7 @@ References
  https://lastexiler.wordpress.com/2017/02/22/auto-batch-processing-code-for-photoscan/
  https://mapbox.s3.amazonaws.com/playground/perrygeo/rasterio-docs/cookbook.html
 '''
-#import PhotoScan
+import PhotoScan
 import os, re, time, sys
 
 
@@ -29,7 +29,7 @@ def getPhotoList(root_path, photoList):
 
 #####-----------------------------------------------------------------------------------------------------------------------------------#######
 ## Batch Process Images in Agisoft Photoscan
-def photoscanProcess(root_path, save_file, save_ortho, NDVI_flag):
+def photoscanProcess(img_path, save_file, save_ortho, NDVI_flag):
     # Clear the Console
     PhotoScan.app.console.clear()
      
@@ -37,9 +37,8 @@ def photoscanProcess(root_path, save_file, save_ortho, NDVI_flag):
     doc = PhotoScan.app.document
     
     ## save project
-    psxfile = os.path.join(root_path, save_file)
-    doc.save( psxfile )
-    print ('&amp;gt;&amp;gt; Saved to: ' + psxfile)
+    doc.save( save_file )
+    print ('&amp;gt;&amp;gt; Saved to: ' + save_file)
     ## add a new chunk
     chunk = doc.addChunk()
     
@@ -53,7 +52,7 @@ def photoscanProcess(root_path, save_file, save_ortho, NDVI_flag):
     ################################################################################################
     ### Photo List ###
     photoList = []
-    getPhotoList(root_path, photoList)
+    getPhotoList(img_path, photoList)
     # Add photos to list
     chunk.addPhotos(photoList)
     
@@ -152,19 +151,27 @@ def photoscanProcess(root_path, save_file, save_ortho, NDVI_flag):
 print("Script Started...")
 t0 = time.time()
 
+arg = ""
 for i in range (1, len(sys.argv)):
-	arg = sys.argv[i]
-	print("Argument " + str(i) + ": " + arg+ "\n")
+	arg = arg + " " + sys.argv[i]
+#sys.stdout.write("Argument " + str(i) + ": " + arg+ "\n")
+print("Folder to Process: " + arg)
+fn = arg
+
+projname = fn2 = fn.rpartition("Drone/")[2].rpartition(" - Copy/")[0] + "_" + fn.rpartition("Copy/")[2].rpartition("/Processed")[0]
+saveproj = "N:/Data02/projects-active/IGEM_Kairosys/2018 Data/Drone/PhotoscanProjects/" + projname + ".psx"
 
 
-#folder = "H:/Terroir/Bitner/photo/Processed_1/vigCorrected/"
-#saveproj = "Bitner1.psx"
-#save_ortho = "H:/Terroir/Bitner/photo/Processed_1/vigCorrected/BitnerOrtho1.tif"
+save_orthoFold = fn + "orhto/"
+if not os.path.exists(save_orthoFold):
+    os.mkdir(save_orthoFold)
+
+save_ortho = save_orthoFold + projname + ".tif"
 
 
 # NDVI from the mosaic?
-#NDVI_flag = 1 # 0 - No, 1 - Yes
-#photoscanProcess(folder, saveproj, save_ortho, NDVI_flag)
+NDVI_flag = 0 # 0 - No, 1 - Yes
+photoscanProcess(fn, saveproj, save_ortho, NDVI_flag)
 
 
 tend = float(time.time() - t0)
