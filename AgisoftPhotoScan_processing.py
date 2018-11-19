@@ -4,49 +4,18 @@ Auto batch process for Agisoft Photoscan
  Needs a shp and shx file in the same folder as the images to crop the orthomosaic
  
 
-Run script in headless mode (without opening Agisoft) from command line
+Run script in headless mode (without opening Agisoft) from command line (or python script)
  photoscan.exe -r <script.py>
-
+ 
+ To split the area into segments use:
+  https://github.com/agisoft-llc/photoscan-scripts/blob/master/src/split_in_chunks_dialog.py
+  
 References
  https://lastexiler.wordpress.com/2017/02/22/auto-batch-processing-code-for-photoscan/
  https://mapbox.s3.amazonaws.com/playground/perrygeo/rasterio-docs/cookbook.html
 '''
 import PhotoScan
 import os, re, time
-
-
-#####-----------------------------------------------------------------------------------------------------------------------------------#######
-def crop_ortho(sf, fn):
-    try:
-        import fiona
-        import rasterio
-        from rasterio.mask import mask
-        
-        # Open the shapefile
-        with fiona.open(sf, "r") as shapefile:
-            geoms = [feature["geometry"] for feature in shapefile]
-        
-        # Read in the Tif
-        with rasterio.open(fn) as src:
-            out_image, out_transform = mask(src, geoms, crop=True)
-            out_meta = src.meta.copy()
-               
-        # Update Metadata
-        out_meta.update({"driver": "GTiff",
-                         "height": out_image.shape[1],
-                         "width": out_image.shape[2],
-                         "transform": out_transform})
-        
-        # Cropped TIF name
-        maskedFN = fn.rpartition(".")[0] + "_masked.tif"
-        # Save the Cropped TIF
-        with rasterio.open(maskedFN, "w", **out_meta) as dest:
-            dest.write(out_image)
-    
-    except:
-         print("This computer is missing something needed to crop the orthomosaic.")
-
-    return
 
 
 #####-----------------------------------------------------------------------------------------------------------------------------------#######
@@ -64,17 +33,10 @@ def getPhotoList(root_path, photoList):
 
 #####-----------------------------------------------------------------------------------------------------------------------------------#######
 ## Batch Process Images in Agisoft Photoscan
-def photoscanProcess(root_path, save_file, save_ortho, NDVI_flag, CropOrtho_flag, sf):
+def photoscanProcess(root_path, save_file, save_ortho, NDVI_flag):
     # Clear the Console
     PhotoScan.app.console.clear()
-    
-    # Enable GPU Processing
-    PhotoScan.app.gpu_mask = 2 ** len(PhotoScan.app.enumGPUDevices()) - 1 #setting GPU mask
-    if PhotoScan.app.gpu_mask:
-        PhotoScan.app.cpu_enable = False  
-    else:
-        PhotoScan.app.cpu_enable = True
-    
+     
     ## construct the document class
     doc = PhotoScan.app.document
     
@@ -117,7 +79,7 @@ def photoscanProcess(root_path, save_file, save_ortho, NDVI_flag, CropOrtho_flag
     # - Dense point cloud quality in [UltraQuality, HighQuality, MediumQuality, LowQuality, LowestQuality]
     # - Depth filtering mode in [AggressiveFiltering, ModerateFiltering, MildFiltering, NoFiltering]
     
-    chunk.buildDepthMaps(quality = PhotoScan.MediumQuality, filter = PhotoScan.MildFiltering)
+    chunk.buildDepthMaps(quality = PhotoScan.LowestQuality, filter = PhotoScan.MildFiltering)
     chunk.buildDenseCloud(point_colors = True)
     doc.save()
     
@@ -184,16 +146,6 @@ def photoscanProcess(root_path, save_file, save_ortho, NDVI_flag, CropOrtho_flag
     else:
         pass
     
-    
-    ################################################################################################
-    # Crop the orthomosaic to the region of interest
-    if CropOrtho_flag == 1:
-        crop_ortho(sf, save_ortho)
-        if NDVI_flag == 1:
-            crop_ortho(sf, save_NDVI)
-    else:
-        pass
-    
     print("Finished Processing" + save_file)
     doc.clear()
     return
@@ -211,12 +163,7 @@ save_ortho = "H:/Terroir/Bitner/photo/Processed_1/vigCorrected/BitnerOrtho1.tif"
 # NDVI from the mosaic?
 NDVI_flag = 1 # 0 - No, 1 - Yes
 
-# Crop the orthomosaic?
-CropOrtho_flag = 1 # 0 - No, 1 - Yes
-# Shape file location (Needed for cropping the ortho, just make whatever if CropOrtho = 0)
-sf = "H:/Terroir/Bitner/Bitner.shp"
-
-photoscanProcess(folder, saveproj, save_ortho, NDVI_flag, CropOrtho_flag, sf)
+photoscanProcess(folder, saveproj, save_ortho, NDVI_flag)
 
 tend = float(time.time() - t0)
 
