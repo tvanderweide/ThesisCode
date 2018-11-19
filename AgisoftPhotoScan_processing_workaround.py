@@ -4,17 +4,14 @@ Auto batch process for Agisoft Photoscan
 
 11/19/2018
 Made to use with the python library workaround
-
-Run script in headless mode (without opening Agisoft) from command line (or python script)
- photoscan.exe -r <script.py>
  
   
 References
  https://lastexiler.wordpress.com/2017/02/22/auto-batch-processing-code-for-photoscan/
  https://mapbox.s3.amazonaws.com/playground/perrygeo/rasterio-docs/cookbook.html
 '''
-import PhotoScan
-import os, re, time
+#import PhotoScan
+import os, re, time, sys
 
 
 #####-----------------------------------------------------------------------------------------------------------------------------------#######
@@ -155,17 +152,22 @@ def photoscanProcess(root_path, save_file, save_ortho, NDVI_flag):
 print("Script Started...")
 t0 = time.time()
 
-folder = "H:/Terroir/Bitner/photo/Processed_1/vigCorrected/"
-saveproj = "Bitner1.psx"
-save_ortho = "H:/Terroir/Bitner/photo/Processed_1/vigCorrected/BitnerOrtho1.tif"
+for i in range (1, len(sys.argv)):
+	arg = sys.argv[i]
+	print("Argument " + str(i) + ": " + arg+ "\n")
+
+
+#folder = "H:/Terroir/Bitner/photo/Processed_1/vigCorrected/"
+#saveproj = "Bitner1.psx"
+#save_ortho = "H:/Terroir/Bitner/photo/Processed_1/vigCorrected/BitnerOrtho1.tif"
+
 
 # NDVI from the mosaic?
-NDVI_flag = 1 # 0 - No, 1 - Yes
+#NDVI_flag = 1 # 0 - No, 1 - Yes
+#photoscanProcess(folder, saveproj, save_ortho, NDVI_flag)
 
-photoscanProcess(folder, saveproj, save_ortho, NDVI_flag)
 
 tend = float(time.time() - t0)
-
 print("Script finished in " + "{:.2f}".format(tend) + " seconds.\n")
     
 
