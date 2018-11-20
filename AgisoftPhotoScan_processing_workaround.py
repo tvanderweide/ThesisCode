@@ -148,17 +148,16 @@ def photoscanProcess(img_path, save_file, save_ortho, NDVI_flag):
 
 #####-----------------------------------------------------------------------------------------------------------------------------------#######
 # Main Function
-print("Script Started...")
+sys.stdout.write("Processing Started...")
 t0 = time.time()
 
 arg = ""
 for i in range (1, len(sys.argv)):
 	arg = arg + " " + sys.argv[i]
-#sys.stdout.write("Argument " + str(i) + ": " + arg+ "\n")
-print("Folder to Process: " + arg)
+sys.stdout.write("Folder to Process: " + arg)
 fn = arg
 
-projname = fn2 = fn.rpartition("Drone/")[2].rpartition(" - Copy/")[0] + "_" + fn.rpartition("Copy/")[2].rpartition("/Processed")[0]
+projname = fn.rpartition("Drone/")[2].rpartition(" - Copy/")[0] + "_" + fn.rpartition("Copy/")[2].rpartition("/Processed")[0]
 saveproj = "N:/Data02/projects-active/IGEM_Kairosys/2018 Data/Drone/PhotoscanProjects/" + projname + ".psx"
 
 
@@ -170,12 +169,12 @@ save_ortho = save_orthoFold + projname + ".tif"
 
 
 # NDVI from the mosaic?
-NDVI_flag = 0 # 0 - No, 1 - Yes
+NDVI_flag = 1 # 0 - No, 1 - Yes
 photoscanProcess(fn, saveproj, save_ortho, NDVI_flag)
 
 
 tend = float(time.time() - t0)
-print("Script finished in " + "{:.2f}".format(tend) + " seconds.\n")
+sys.stdout.write("Script finished in " + "{:.2f}".format(tend) + " seconds.\n")
     
 
 
