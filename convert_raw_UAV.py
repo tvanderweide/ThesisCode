@@ -90,19 +90,15 @@ def iter_fold(fold, vigArr, field):
 #            print(day)
             Processed = day + "/Processed_1/"
             # Create a list of all the previously organized files
-#            allfiles = os.listdir(Processed)
-#            for entry in allfiles:
-#                if entry[:2] == "Th":
-#                    allfiles.remove(entry)
+            allfiles = os.listdir(Processed)
+            for entry in allfiles:
+                if entry[:2] == "Th":
+                    allfiles.remove(entry)
             imlist = []
-#            for flight in allfiles:
-#                findFiles = os.listdir(Processed + flight)
-#                print(len(findFiles))
-#                imlist = imlist + [filename for filename in findFiles if filename[-4:] in [".tif",".TIF"]]
+            for flight in allfiles:
+                findFiles = os.listdir(Processed + flight)
+                imlist = imlist + [filename for filename in findFiles if filename[-4:] in [".tif",".TIF"]]
 
-            flight = "Flight1" 
-            findFiles = os.listdir(Processed + flight)
-            imlist = [filename for filename in findFiles if filename[-4:] in [".tif",".TIF"]]
             N = np.int(len(imlist))
             print("There are " + str(N) + " images to process...")
             imList = [w[:-4] + w[-4:].replace('.tif', '.RAW') for w in imlist]
@@ -172,12 +168,12 @@ def iter_fold(fold, vigArr, field):
                     # Transfer the Metadata
                     copyExif(outphoto, outphoto2)
     elif field == "Western - Copy":
-        for day in sorted(glob.iglob(fold + "*"))[-1:]:
+        for day in sorted(glob.iglob(fold + "*")):
             print(day)
             Processed = day + "/Processed_1/"
             # Create a list of all the previously organized files
             imlist = []
-            findFiles = os.listdir(Processed + "vigCorrected/")
+            findFiles = os.listdir(Processed)
             imlist = [filename for filename in findFiles if filename[-4:] in [".tif",".TIF"]]
             N = np.int(len(imlist))
             print("There are " + str(N) + " images to process...")
@@ -192,7 +188,7 @@ def iter_fold(fold, vigArr, field):
             inJPG = day + "/*.JPG"
             JPG = []
             for jpgfn in sorted(glob.iglob(inJPG)):
-                JPG.append(jpgfn)  
+                JPG.append(jpgfn)
                 
             # Create folder to save vignette corrected TIFFs if it DNE
             outFold2 = day + "/Processed_2/vigCorrected/"
@@ -201,50 +197,49 @@ def iter_fold(fold, vigArr, field):
         
             # Save RAW images as TIFF files
             inFold = day + "/*.RAW"
-            for img in sorted(glob.iglob(inFold))[172:]:
+            for img in sorted(glob.iglob(inFold)):
                 imgPart = img.rpartition("\\")[2]
                 if imgPart in imList:
-                    print(imgPart)
-#                    imarr = read_RAW(img)
-#                        
-#                    # Save the 16-bit images
-#                    imgName = img.rpartition("\\")[2].rpartition(".")[0]
-#                    outphoto = outFold + imgName + ".tif"
-#                    io.imsave(outphoto, imarr)
-#                    print("Saved: " + img)
-#                    
-#                    # Transfer the Metadata
-#                    for jpgimg in JPG:
-#                        jpgName = int(jpgimg.rpartition("\\")[2].rpartition("_")[2].rpartition(".")[0]) - 1
-#                        rawName = int(img.rpartition("\\")[2].rpartition("_")[2].rpartition(".")[0])
-#                        if jpgName == rawName:
-#                            print("Found Match: " + str(jpgName) + " with " + str(rawName))
-#                            copyExif(jpgimg, outphoto)
-#                            break  
-#                    
-#                    # Apply the Vignette correction
-#                    # Split into bands
-#                    Blue = np.copy(imarr[:,:,B])
-#                    Green = np.copy(imarr[:,:,G])
-#                    NIR = np.copy(imarr[:,:,R])
-#                    
-#                    # Apply the vignette corretion 
-#                    blueArray = np.multiply(Blue, blueVig)
-#                    greenArray = np.multiply(Green, greenVig)
-#                    NIRArray = np.multiply(NIR, NIRVig)
-#                
-#                    # Convert to 3000 x 4000 x 3 array
-#                    arr = np.zeros(imarr.shape, dtype = np.uint16)
-#                    arr[:,:,R] = NIRArray.astype(np.uint16)
-#                    arr[:,:,G] = greenArray.astype(np.uint16)
-#                    arr[:,:,B] = blueArray.astype(np.uint16)
-#                
-#                    # Save the 16-bit images
-#                    outphoto2 = outFold2 + imgName + ".tif"
-#                    io.imsave(outphoto2, arr)
-#                    
-#                    # Transfer the Metadata
-#                    copyExif(outphoto, outphoto2)
+                    imarr = read_RAW(img)
+                        
+                    # Save the 16-bit images
+                    imgName = img.rpartition("\\")[2].rpartition(".")[0]
+                    outphoto = outFold + imgName + ".tif"
+                    io.imsave(outphoto, imarr)
+                    print("Saved: " + img)
+                    
+                    # Transfer the Metadata
+                    for jpgimg in JPG:
+                        jpgName = int(jpgimg.rpartition("\\")[2].rpartition("_")[2].rpartition(".")[0]) - 1
+                        rawName = int(img.rpartition("\\")[2].rpartition("_")[2].rpartition(".")[0])
+                        if jpgName == rawName:
+                            print("Found Match: " + str(jpgName) + " with " + str(rawName))
+                            copyExif(jpgimg, outphoto)
+                            break  
+                    
+                    # Apply the Vignette correction
+                    # Split into bands
+                    Blue = np.copy(imarr[:,:,B])
+                    Green = np.copy(imarr[:,:,G])
+                    NIR = np.copy(imarr[:,:,R])
+                    
+                    # Apply the vignette corretion 
+                    blueArray = np.multiply(Blue, blueVig)
+                    greenArray = np.multiply(Green, greenVig)
+                    NIRArray = np.multiply(NIR, NIRVig)
+                
+                    # Convert to 3000 x 4000 x 3 array
+                    arr = np.zeros(imarr.shape, dtype = np.uint16)
+                    arr[:,:,R] = NIRArray.astype(np.uint16)
+                    arr[:,:,G] = greenArray.astype(np.uint16)
+                    arr[:,:,B] = blueArray.astype(np.uint16)
+                
+                    # Save the 16-bit images
+                    outphoto2 = outFold2 + imgName + ".tif"
+                    io.imsave(outphoto2, arr)
+                    
+                    # Transfer the Metadata
+                    copyExif(outphoto, outphoto2)
     else:
         print("Field not recognized")
     return
@@ -253,7 +248,7 @@ def iter_fold(fold, vigArr, field):
 #######--------------------------------------------------------------------------------------------------------------------------------------------------------########
 # Main Definition
 print("Running Convert RAW script...")
-field = "Hartman - Copy"
+field = "Western - Copy"
 DataFold = "N:/Data02/projects-active/IGEM_Kairosys/2018 Data/Drone/" + field + "/"
 vigCorr = "N:/Data02/projects-active/IGEM_Kairosys/2018 Data/Vignette/Version4/Photo_1"
 
