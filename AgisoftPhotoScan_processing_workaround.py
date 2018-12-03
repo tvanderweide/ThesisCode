@@ -2,8 +2,8 @@
 Auto batch process for Agisoft Photoscan
  Processes all tif images into an orthomosaic
 
-11/19/2018
-Made to use with the python library workaround
+12/2/2018
+Made to run thru Photoscan
  
   
 References
@@ -11,7 +11,7 @@ References
  https://mapbox.s3.amazonaws.com/playground/perrygeo/rasterio-docs/cookbook.html
 '''
 import PhotoScan
-import os, re, time, sys
+import os, re, time, sys, glob
 
 
 #####-----------------------------------------------------------------------------------------------------------------------------------#######
@@ -29,7 +29,23 @@ def getPhotoList(root_path, photoList):
 
 #####-----------------------------------------------------------------------------------------------------------------------------------#######
 ## Batch Process Images in Agisoft Photoscan
-def photoscanProcess(img_path, save_file, save_ortho, NDVI_flag):
+def photoscanProcess(img_path, save_file, save_ortho, VI_flag, quality):
+    if quality == "Highest":
+        matchaccuracy = PhotoScan.HighestAccuracy
+        depthquality = PhotoScan.UltraQuality
+    elif quality == "High":
+        matchaccuracy = PhotoScan.HighAccuracy
+        depthquality = PhotoScan.HighQuality
+    elif quality == "Low":
+        matchaccuracy = PhotoScan.LowAccuracy
+        depthquality = PhotoScan.LowQuality
+    elif quality == "Lowest":
+        matchaccuracy = PhotoScan.LowestAccuracy
+        depthquality = PhotoScan.LowestQuality
+    else:
+        matchaccuracy = PhotoScan.MediumAccuracy
+        depthquality = PhotoScan.MediumQuality
+            
     # Clear the Console
     PhotoScan.app.console.clear()
      
@@ -63,7 +79,7 @@ def photoscanProcess(img_path, save_file, save_ortho, NDVI_flag):
     # - Alignment accuracy in [HighestAccuracy, HighAccuracy, MediumAccuracy, LowAccuracy, LowestAccuracy]
     # - Reference Preselection in [ReferencePreselection, GenericPreselection, NoPreselection]
     
-    chunk.matchPhotos(accuracy=PhotoScan.MediumAccuracy, preselection=PhotoScan.NoPreselection, filter_mask=False, keypoint_limit=40000, tiepoint_limit=4000)
+    chunk.matchPhotos(accuracy = matchaccuracy, preselection=PhotoScan.NoPreselection, filter_mask=False, keypoint_limit=40000, tiepoint_limit=4000)
     chunk.alignCameras()
     doc.save()
     
@@ -74,7 +90,7 @@ def photoscanProcess(img_path, save_file, save_ortho, NDVI_flag):
     # - Dense point cloud quality in [UltraQuality, HighQuality, MediumQuality, LowQuality, LowestQuality]
     # - Depth filtering mode in [AggressiveFiltering, ModerateFiltering, MildFiltering, NoFiltering]
     
-    chunk.buildDepthMaps(quality = PhotoScan.LowestQuality, filter = PhotoScan.MildFiltering)
+    chunk.buildDepthMaps(quality = depthquality, filter = PhotoScan.MildFiltering)
     chunk.buildDenseCloud(point_colors = True)
     doc.save()
     
@@ -132,12 +148,15 @@ def photoscanProcess(img_path, save_file, save_ortho, NDVI_flag):
     # Create NDVI of the ortho
     # NDVI = (NIR - Red) / (NIR + Red)
     # Export Ortho - [RasterTransformNone, RasterTransformValue, RasterTransformPalette]
-    if NDVI_flag == 1:
-        chunk.raster_transform.formula = ["(B3-B1)/(B3+B1)"]
-        chunk.raster_transform.calibrateRange()
-        chunk.raster_transform.enabled = True
-        save_NDVI = save_ortho.rpartition(".")[0] + "_NDVI.tif"
-        chunk.exportOrthomosaic(save_NDVI, image_format = PhotoScan.ImageFormatTIFF, raster_transform=PhotoScan.RasterTransformNone)
+    if VI_flag == 1:
+        try:
+            chunk.raster_transform.formula = ["(B3/B2)*(B1/B2)"]
+            chunk.raster_transform.calibrateRange()
+            chunk.raster_transform.enabled = True
+            save_NDVI = save_ortho.rpartition(".")[0] + "_NDVI.tif"
+            chunk.exportOrthomosaic(save_NDVI, image_format = PhotoScan.ImageFormatTIFF, raster_transform=PhotoScan.RasterTransformNone)
+        except:
+            print("Could not save VI image.")
     else:
         pass
     
@@ -147,34 +166,59 @@ def photoscanProcess(img_path, save_file, save_ortho, NDVI_flag):
     
 
 #####-----------------------------------------------------------------------------------------------------------------------------------#######
+def process_data(processday):    
+    projname = processday.rpartition("Isolated/")[2].rpartition("/")[0].replace("/","-")
+    saveproj = "C:/Users/thomasvanderweide/Documents/PhotoscanProjects/" + projname + ".psx"
+    print(saveproj)
+
+    save_orthoFold = processday + "orhto/"
+    if not os.path.exists(save_orthoFold):
+        os.mkdir(save_orthoFold)
+
+    save_ortho = save_orthoFold + projname + ".tif"
+    print(save_ortho)
+
+    # NDVI from the mosaic?
+    VI_flag = 1 # 0 - No, 1 - Yes
+    quality = "Highest" # - Accuracy in [Highest, High, Medium, Low, Lowest]
+    photoscanProcess(processday, saveproj, save_ortho, VI_flag, quality)
+
+
+
+#####-----------------------------------------------------------------------------------------------------------------------------------#######
 # Main Function
 sys.stdout.write("Processing Started...")
-t0 = time.time()
-
-arg = ""
-for i in range (1, len(sys.argv)):
-	arg = arg + " " + sys.argv[i]
-sys.stdout.write("Folder to Process: " + arg)
-fn = arg
-
-projname = fn.rpartition("Drone/")[2].rpartition(" - Copy/")[0] + "_" + fn.rpartition("Copy/")[2].rpartition("/Processed")[0]
-saveproj = "N:/Data02/projects-active/IGEM_Kairosys/2018 Data/Drone/PhotoscanProjects/" + projname + ".psx"
 
 
-save_orthoFold = fn + "orhto/"
-if not os.path.exists(save_orthoFold):
-    os.mkdir(save_orthoFold)
+field = ["C:/Users/thomasvanderweide/Documents/Isolated/Hartman/", 
+      "C:/Users/thomasvanderweide/Documents/Isolated/Western/"]
 
-save_ortho = save_orthoFold + projname + ".tif"
-
-
-# NDVI from the mosaic?
-NDVI_flag = 1 # 0 - No, 1 - Yes
-photoscanProcess(fn, saveproj, save_ortho, NDVI_flag)
-
-
-tend = float(time.time() - t0)
-sys.stdout.write("Script finished in " + "{:.2f}".format(tend) + " seconds.\n")
+for fn in field:
+    for day in sorted(glob.iglob(fn + "*")):
+        if fn.rpartition("Isolated/")[2].rpartition("/")[0] == "Hartman":
+            fieldNum = ["2A", "2B"]
+            for fieldID in fieldNum:
+                dayfold = day.replace("\\","/")
+                proj = fieldID
+                processday = dayfold + "/" + proj + "/"
+                onlyfiles = [f for f in os.listdir(processday)]
+                if len(onlyfiles) > 2:
+                    t0 = time.time()
+                    process_data(processday)
+                    tend = float(time.time() - t0)
+                    sys.stdout.write("Script finished in " + "{:.2f}".format(tend) + " seconds.\n")
     
+        elif fn.rpartition("Isolated/")[2].rpartition("/")[0] == "Western":
+            fieldNum = ["1A", "1B"]
+            for fieldID in fieldNum:
+                dayfold = day.replace("\\","/")
+                proj = fieldID
+                processday = dayfold + "/" + proj + "/"
+                onlyfiles = [f for f in os.listdir(processday)]
+                if len(onlyfiles) > 2:
+                    t0 = time.time()
+                    process_data(processday)
+                    tend = float(time.time() - t0)
+                    sys.stdout.write("Script finished in " + "{:.2f}".format(tend) + " seconds.\n")
 
 
